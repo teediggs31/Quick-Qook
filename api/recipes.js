@@ -44,6 +44,7 @@ function cleanInput(body) {
     time: num(p.time, 15, 65, 30),
     servings: num(p.servings, 1, 12, 2),
     extras: p.extras !== false,
+    kids: p.kids === true,
     craving: str(p.craving, 80),
     avoid: str(p.avoid, 120),
     diets: pick(DIETS, p.diets),
@@ -75,6 +76,7 @@ function methodText(p) {
 }
 function dietText(p) {
   const parts = [];
+  if (p.kids) parts.push('Kid-friendly (strict): dishes children will happily eat. Keep them mild, not spicy (any heat goes on the side for adults), with familiar flavors, simple textures, and easy-to-eat, bite-size pieces. No alcohol. Avoid choking hazards for young kids, such as whole nuts or whole grapes.');
   if (p.diets.length) parts.push(`Dietary needs (strict): ${p.diets.join(', ')}. Every recipe and every ingredient must comply. Skip any of the cook's ingredients that break these needs, and never suggest a missing ingredient that breaks them. Watch for hidden sources (for example soy sauce and flour contain gluten, butter and cheese are dairy, honey is not vegan, broth may contain meat).`);
   if (p.avoid) parts.push(`Never use these, even if the cook has them: ${p.avoid}.`);
   return parts.join('\n');

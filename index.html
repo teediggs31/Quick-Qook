@@ -332,6 +332,7 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
           </div>
         </div>
         <label class="switch"><input type="checkbox" id="extras"> Allow 1–2 items I don't have</label>
+        <label class="switch"><input type="checkbox" id="kids"> Kid-friendly</label>
       </div>
       <div>
         <label class="field-label" for="craving">Craving anything? <span class="field-sub">(optional)</span></label>
@@ -415,7 +416,7 @@ function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):nul
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 const reduceMotion=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return true}};
 
-const S={kitchen:{pantry:[],fridge:[],spices:[]},prefs:{meal:'Any',time:30,servings:2,extras:true,craving:'',diets:[],avoid:'',cuisines:[],methods:[]},
+const S={kitchen:{pantry:[],fridge:[],spices:[]},prefs:{meal:'Any',time:30,servings:2,extras:true,craving:'',diets:[],avoid:'',cuisines:[],methods:[],kids:false},
   isSample:false,ideas:[],ideasErr:null,loading:false,loadingMore:false,view:'kitchen',filtersOpen:true,saved:[],status:''};
 let ideasCtl=null, detailCtl=null, sheet=null, lastFocus=null;
 const recipeCache=new Map();
@@ -435,6 +436,7 @@ function applyData(d){
     if(Array.isArray(p.methods)) S.prefs.methods=METHODS.filter(x=>p.methods.includes(x));
     if(Number.isFinite(p.servings)) S.prefs.servings=Math.min(12,Math.max(1,Math.round(p.servings)));
     if(typeof p.extras==='boolean') S.prefs.extras=p.extras;
+    if(typeof p.kids==='boolean') S.prefs.kids=p.kids;
     if(typeof p.craving==='string') S.prefs.craving=p.craving.slice(0,80);
     if(Array.isArray(p.diets)) S.prefs.diets=DIETS.filter(x=>p.diets.includes(x));
     if(typeof p.avoid==='string') S.prefs.avoid=p.avoid.slice(0,120);
@@ -492,6 +494,7 @@ function renderPrefs(){
   renderTime();
   $('#servings').textContent=S.prefs.servings;
   $('#extras').checked=S.prefs.extras;
+  $('#kids').checked=S.prefs.kids;
   if(document.activeElement!==$('#craving')) $('#craving').value=S.prefs.craving;
   renderSummary();
 }
@@ -499,7 +502,7 @@ function renderSlowNote(){$('#slow-note').hidden=!(S.prefs.time<65&&S.prefs.meth
 function renderAllergyNote(){$('#allergy-note').hidden=!(S.prefs.diets.some(d=>ALLERGY_DIETS.includes(d))||S.prefs.avoid.trim())}
 function summaryText(){
   const p=S.prefs;
-  return [p.meal==='Any'?'Any meal':p.meal,p.cuisines.length?p.cuisines.join(', '):'Any cuisine',p.methods.length?p.methods.join(', '):'Any method',p.diets.length?p.diets.join(', '):null,
+  return [p.meal==='Any'?'Any meal':p.meal,p.cuisines.length?p.cuisines.join(', '):'Any cuisine',p.methods.length?p.methods.join(', '):'Any method',p.kids?'Kid-friendly':null,p.diets.length?p.diets.join(', '):null,
     timeLabel(p.time),'Serves '+p.servings,p.extras?'Extras OK':'Only what I have'].filter(Boolean).join(' · ');
 }
 function renderSummary(){
@@ -628,7 +631,7 @@ function normIdea(r){
     blurb:typeof r.blurb==='string'?r.blurb.slice(0,240):'',
     minutes:Number.isFinite(+r.minutes)&&+r.minutes>0?Math.round(+r.minutes):null,
     difficulty:['Easy','Medium','Hard'].includes(r.difficulty)?r.difficulty:'',
-    uses:strArr(r.uses,20),missing:S.prefs.extras?strArr(r.missing,3):[],diets:[...S.prefs.diets]};
+    uses:strArr(r.uses,20),missing:S.prefs.extras?strArr(r.missing,3):[],diets:[...(S.prefs.kids?['Kid-friendly']:[]),...S.prefs.diets]};
 }
 async function findRecipes(more){
   more=!!(more&&S.ideas.length);
@@ -667,7 +670,7 @@ function normRecipe(r,idea){
 }
 async function loadDetail(){
   const idea=sheet.idea;
-  const key=JSON.stringify([idea.title,S.prefs.servings,S.prefs.diets,S.prefs.avoid,S.prefs.extras]);
+  const key=JSON.stringify([idea.title,S.prefs.servings,S.prefs.diets,S.prefs.avoid,S.prefs.extras,S.prefs.kids]);
   if(recipeCache.has(key)){sheet.recipe=recipeCache.get(key);sheet.loading=false;sheet.err=null;renderSheet();return}
   if(detailCtl) detailCtl.abort();
   const ctl=new AbortController(); detailCtl=ctl;
@@ -752,7 +755,8 @@ document.addEventListener('submit',e=>{
   const again=$('#add-'+sh); if(again){again.value='';again.focus()}
 });
 $('#time').addEventListener('input',e=>{S.prefs.time=toTime(e.target.value);renderTime();renderSlowNote();renderSummary();scheduleSave()});
-$('#extras').addEventListener('change',e=>{S.prefs.extras=e.target.checked;scheduleSave()});
+$('#extras').addEventListener('change',e=>{S.prefs.extras=e.target.checked;renderSummary();scheduleSave()});
+$('#kids').addEventListener('change',e=>{S.prefs.kids=e.target.checked;renderSummary();scheduleSave()});
 $('#craving').addEventListener('input',e=>{S.prefs.craving=e.target.value.slice(0,80);scheduleSave()});
 $('#avoid').addEventListener('input',e=>{S.prefs.avoid=e.target.value.slice(0,120);renderAllergyNote();scheduleSave()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});

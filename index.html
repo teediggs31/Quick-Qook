@@ -600,11 +600,15 @@ async function callApi(payload,signal){
     throw {code:'network'};
   }
   let data=null; try{data=await r.json()}catch(e){}
-  if(!r.ok||!data||!('result' in data)) throw {code:(data&&data.error)||(r.status===404||r.status===405?'no_api':'upstream_error')};
+  if(!r.ok||!data||!('result' in data)) throw {code:(data&&data.error)||(r.status===404||r.status===405?'no_api':'upstream_error'),detail:data&&typeof data.detail==='string'?data.detail.slice(0,120):''};
   return data.result;
 }
 function basePayload(){return {kitchen:{...S.kitchen},prefs:{...S.prefs}}}
 function errCopy(e){
+  const msg=errMessage(e);
+  return e&&e.detail?msg+' (Details: '+e.detail+')':msg;
+}
+function errMessage(e){
   switch(e&&e.code){
     case 'missing_key': return "The recipe server isn't set up yet. Add ANTHROPIC_API_KEY in your Vercel project's environment variables, then redeploy.";
     case 'bad_key': return "The recipe server's API key was rejected. Check ANTHROPIC_API_KEY in your Vercel project settings.";

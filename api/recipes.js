@@ -97,7 +97,7 @@ ${dietText(p)}
 ${p.extras ? 'Each recipe may need at most 2 ingredients that are not listed; list those under "missing". Prefer recipes that need none.' : 'Use only the listed ingredients (plus the always-available ones). "missing" must be an empty array.'}
 ${cuisineLine} Each should use several of the cook's ingredients.${avoid}
 
-Reply with only a JSON array of 5 objects shaped like:
+Reply with only a JSON object of the form {"recipes":[...]} holding 5 recipe objects shaped like:
 {"title":"Cheesy Spinach Fried Rice","cuisine":"Asian","method":"Stovetop","blurb":"One sentence on what it is and why it's good.","minutes":20,"difficulty":"Easy","uses":["rice","eggs","spinach"],"missing":[]}
 "cuisine" is a short label such as American, BBQ, Mexican, Italian, Asian. "method" is the main equipment, one of: ${METHODS.join(', ')}. "difficulty" is one of Easy, Medium, Hard. "uses" lists ingredient names exactly as they appear in the cook's lists.`;
 }
@@ -118,15 +118,62 @@ Reply with only a JSON object shaped like:
 "have" is true when the item is in the cook's lists or always available, false otherwise. Steps are in order, clear and specific (heat levels, times, doneness cues), with no numbering in the text.`;
 }
 
+/* ---------- the JSON shapes Claude must return ---------- */
+const STR = { type: 'string' };
+const STR_LIST = { type: 'array', items: STR };
+const DIFFICULTY = { type: 'string', enum: ['Easy', 'Medium', 'Hard'] };
+function obj(properties) {
+  return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
+}
+const IDEAS_SCHEMA = obj({
+  recipes: {
+    type: 'array',
+    items: obj({ title: STR, cuisine: STR, method: STR, blurb: STR, minutes: { type: 'integer' }, difficulty: DIFFICULTY, uses: STR_LIST, missing: STR_LIST })
+  }
+});
+const RECIPE_SCHEMA = obj({
+  title: STR, servings: { type: 'integer' }, minutes: { type: 'integer' }, difficulty: DIFFICULTY,
+  ingredients: { type: 'array', items: obj({ item: STR, amount: STR, have: { type: 'boolean' } }) },
+  steps: STR_LIST, tip: STR
+});
+
+async function callClaude(key, request) {
+  const upstream = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': API_VERSION },
+    body: JSON.stringify(request)
+  });
+  const data = await upstream.json().catch(() => null);
+  return { upstream, data };
+}
+
 /* ---------- reading Claude's reply ---------- */
+// Finds the first complete JSON object or array in the text, even with words around it.
+function firstBalanced(t) {
+  for (let s = 0; s < t.length; s++) {
+    if (t[s] !== '{' && t[s] !== '[') continue;
+    const stack = []; let inStr = false, esc = false;
+    for (let i = s; i < t.length; i++) {
+      const c = t[i];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{' || c === '[') stack.push(c);
+      else if (c === '}' || c === ']') {
+        const open = stack.pop();
+        if ((c === '}' && open !== '{') || (c === ']' && open !== '[')) break;
+        if (!stack.length) { try { return JSON.parse(t.slice(s, i + 1)); } catch (e) { break; } }
+      }
+    }
+  }
+  return null;
+}
 function parseJson(text) {
   const t = String(text || '').trim();
+  if (!t) return null;
   try { return JSON.parse(t); } catch (e) {}
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) { try { return JSON.parse(fence[1]); } catch (e) {} }
-  const start = t.search(/[[{]/), end = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
-  if (start >= 0 && end > start) { try { return JSON.parse(t.slice(start, end + 1)); } catch (e) {} }
-  return null;
+  return firstBalanced(t);
 }
 
 /* ---------- the endpoint ---------- */
@@ -149,26 +196,35 @@ module.exports = async function handler(req, res) {
   if (body.type === 'recipe' && !input.idea.title) return res.status(400).json({ error: 'bad_request' });
 
   const isIdeas = body.type === 'ideas';
+  const request = {
+    model: isIdeas ? IDEAS_MODEL : RECIPE_MODEL,
+    // Generous ceiling: you only pay for tokens actually used, and newer models may think before answering.
+    max_tokens: isIdeas ? 8000 : 12000,
+    messages: [{ role: 'user', content: isIdeas ? ideasPrompt(input) : recipePrompt(input) }],
+    // Structured outputs: Claude's reply is guaranteed to match this JSON shape.
+    output_config: { format: { type: 'json_schema', schema: isIdeas ? IDEAS_SCHEMA : RECIPE_SCHEMA } }
+  };
   try {
-    const upstream = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': API_VERSION },
-      body: JSON.stringify({
-        model: isIdeas ? IDEAS_MODEL : RECIPE_MODEL,
-        max_tokens: isIdeas ? 2000 : 3000,
-        messages: [{ role: 'user', content: isIdeas ? ideasPrompt(input) : recipePrompt(input) }]
-      })
-    });
-    const data = await upstream.json().catch(() => null);
+    let { upstream, data } = await callClaude(key, request);
+    // If this model or account doesn't accept structured outputs, retry once without it.
+    if (upstream.status === 400) {
+      console.error('Claude API 400 with structured output, retrying without it', data && data.error);
+      const { output_config, ...plain } = request;
+      ({ upstream, data } = await callClaude(key, plain));
+    }
     if (!upstream.ok) {
       console.error('Claude API error', upstream.status, data && data.error);
       if (upstream.status === 401 || upstream.status === 403) return res.status(500).json({ error: 'bad_key' });
       if (upstream.status === 429 || upstream.status === 529) return res.status(429).json({ error: 'rate_limited' });
-      return res.status(502).json({ error: 'upstream_error' });
+      return res.status(502).json({ error: 'upstream_error', detail: 'status ' + upstream.status });
     }
     const text = ((data && data.content) || []).filter(b => b && b.type === 'text').map(b => b.text).join('');
     const result = parseJson(text);
-    if (result == null) return res.status(502).json({ error: 'invalid_json' });
+    if (result == null) {
+      const types = ((data && data.content) || []).map(b => b && b.type).join(',') || 'none';
+      console.error('Unreadable reply', data && data.stop_reason, types, text.slice(0, 500));
+      return res.status(502).json({ error: 'invalid_json', detail: `${(data && data.stop_reason) || 'unknown'}; blocks: ${types}` });
+    }
     return res.status(200).json({ result });
   } catch (e) {
     console.error('Recipe request failed', e);

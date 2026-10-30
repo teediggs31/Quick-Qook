@@ -10,6 +10,7 @@ Quick Qook lets you list what's in your pantry, fridge, and spice cabinet, set f
 |---|---|
 | `index.html` | The app people see and use. Saves each person's kitchen and saved recipes in their own browser. |
 | `api/recipes.js` | The recipe server. Builds the request and calls the Claude API using your secret key. |
+| `api/scan.js` | The grocery scanner. Reads receipts, order screenshots, and fridge or pantry photos. |
 | `vercel.json` | Gives the recipe server up to 60 seconds per request. |
 | `manifest.webmanifest`, `icons/` | Lets people add Quick Qook to their phone's home screen like an app. |
 
@@ -31,6 +32,7 @@ Add these environment variables in Vercel to change which Claude model is used:
 
 - `QQ_IDEAS_MODEL`, the model for the list of ideas (default: `claude-haiku-5-5`, fast and low cost)
 - `QQ_RECIPE_MODEL`, the model for full recipes (default: `claude-sonnet-5-5`)
+- `QQ_SCAN_MODEL`, the model that reads receipts and grocery photos (default: `claude-sonnet-5-5`)
 
 ## Good to know
 

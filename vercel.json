@@ -1,5 +1,6 @@
 {
   "functions": {
-    "api/recipes.js": { "maxDuration": 60 }
+    "api/recipes.js": { "maxDuration": 60 },
+    "api/scan.js": { "maxDuration": 60 }
   }
 }

@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quick Qook</title>
+<meta name="description" content="Tell it what's in your kitchen. Get dishes you can cook tonight.">
+<meta name="theme-color" content="#D2392B">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Quick Qook">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: an app with three screens (Kitchen, Cook, Saved). Phones get one screen at a time with a bottom tab bar
+   and a thumb-reach action button; desktop shows the kitchen beside the cook/saved screen. */
+:root{
+  --bg:#F7F4F1; --surface:#FFFFFF; --sunk:#F2EEEA; --ink:#1F1A17; --muted:#665D56; --line:#E8E1DA;
+  --brand:#D2392B; --brand-ink:#FFFFFF; --brand-soft:#FDEBE7; --brand-strong:#B32E22;
+  --fresh:#2A7849; --fresh-soft:#E2F2E7;
+  --saffron:#875805; --saffron-soft:#FAEED1;
+  --pantry:#B07A1F; --fridge:#2E7DAE; --spices:#C2412C;
+  --shadow:0 1px 2px rgba(40,24,16,.06),0 6px 20px rgba(40,24,16,.06);
+  --scrim:rgba(20,12,8,.5);
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+  --nav-h:64px; --r-lg:20px; --r-md:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131110; --surface:#1C1917; --sunk:#25211E; --ink:#F3EEEA; --muted:#ADA39B; --line:#342E29;
+    --brand:#FF6A55; --brand-ink:#1C0905; --brand-soft:#3B1C16; --brand-strong:#FF8572;
+    --fresh:#6CCB8E; --fresh-soft:#17301F;
+    --saffron:#F1C264; --saffron-soft:#3A2D14;
+    --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+    --scrim:rgba(0,0,0,.6); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131110; --surface:#1C1917; --sunk:#25211E; --ink:#F3EEEA; --muted:#ADA39B; --line:#342E29;
+  --brand:#FF6A55; --brand-ink:#1C0905; --brand-soft:#3B1C16; --brand-strong:#FF8572;
+  --fresh:#6CCB8E; --fresh-soft:#17301F;
+  --saffron:#F1C264; --saffron-soft:#3A2D14;
+  --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  --scrim:rgba(0,0,0,.6); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+svg{flex:none}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:10px}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* App bar */
+.appbar-in{max-width:1180px;margin:0 auto;padding-block:18px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wordmark{font-family:var(--f-display);font-weight:800;font-size:clamp(1.75rem,5.5vw,2.4rem);line-height:1;letter-spacing:-.035em;margin:0;font-variation-settings:"opsz" 96}
+.wordmark .q{color:var(--brand)}
+.tagline{margin:6px 0 0;color:var(--muted);font-size:15px}
+.onhand{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--muted);white-space:nowrap}
+.onhand strong{color:var(--ink);font-weight:800;font-size:16px}
+
+/* Screens */
+.app{max-width:1212px;margin:0 auto;padding-block:4px 32px}
+.view{display:none;min-width:0}
+body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[data-view="saved"] #view-saved{display:flex;flex-direction:column;gap:16px}
+@media (max-width:919px){
+  .app{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 28px)}
+  .desktop-only{display:none!important}
+}
+@media (min-width:920px){
+  .app{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;align-items:start}
+  #view-kitchen{grid-column:1;grid-row:1;display:flex!important;flex-direction:column;gap:16px}
+  #view-cook,#view-saved{grid-column:2;grid-row:1}
+  body[data-view="kitchen"] #view-cook{display:flex;flex-direction:column;gap:16px}
+  .mobile-only{display:none!important}
+  .bottom-nav{display:none!important}
+}
+.view-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:6px}
+.view-head h2{font-family:var(--f-display);font-weight:700;font-size:1.6rem;line-height:1.15;letter-spacing:-.02em;margin:0}
+.status{font-size:13.5px;color:var(--muted)}
+.sub{margin:-8px 0 0;color:var(--muted);font-size:15px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.banner{padding:14px 16px;background:var(--saffron-soft);border-radius:var(--r-md);font-size:15px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.banner span{min-width:0}
+
+/* Shelves */
+.shelf{padding:18px}
+.shelf + .shelf{border-top:1px solid var(--line)}
+.shelf-head{display:flex;align-items:center;gap:12px}
+.shelf-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}
+.shelf-head h3{margin:0;font-size:17px;font-weight:700;line-height:1.2}
+.shelf-head p{margin:2px 0 0;color:var(--muted);font-size:14px;line-height:1.3}
+.shelf-head .count{margin-left:auto;font-size:13px;font-weight:700;color:var(--muted);background:var(--sunk);border-radius:999px;padding:3px 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{display:inline-flex;align-items:center;min-height:44px;background:var(--sunk);border-radius:999px;padding:0 2px 0 16px;font-size:15.5px;font-weight:500;line-height:1.2;max-width:100%}
+.chip .label{overflow-wrap:anywhere;padding-block:8px}
+.x{border:0;background:transparent;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
+.x:hover{background:var(--line);color:var(--ink)}
+.empty{margin:0;color:var(--muted);font-size:15px}
+.add{display:flex;gap:8px;margin-top:14px}
+.add input{flex:1;min-width:0;height:48px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;font-size:16px}
+.add input:focus{border-color:var(--brand);outline:none}
+.add input::placeholder{color:var(--muted)}
+.add button{height:48px;border:0;background:var(--ink);color:var(--surface);border-radius:12px;padding:0 18px;font-weight:700}
+.suggest{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.suggest-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ghost{min-height:40px;border:1.5px dashed var(--line);background:transparent;border-radius:999px;padding:0 14px;font-size:14.5px;font-weight:500;color:var(--muted)}
+.ghost:hover{border-color:var(--brand);color:var(--brand);border-style:solid}
+.text-btn{min-height:44px;border:0;background:transparent;padding:0 4px;font-weight:700;color:var(--brand);font-size:15px}
+.text-btn.danger{color:var(--brand)}
+.row-end{display:flex;justify-content:flex-end}
+
+/* Primary action */
+.cta{width:100%;min-height:56px;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:16px;background:var(--brand);color:var(--brand-ink);padding:0 20px;font-family:var(--f-body);font-weight:800;font-size:17.5px;letter-spacing:-.005em;box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 35%,transparent)}
+.cta:hover{background:var(--brand-strong)}
+.cta:disabled{opacity:.6;cursor:default}
+.cta small{font-weight:600;font-size:14px;opacity:.85}
+@media (max-width:919px){
+  .sticky-cta{position:sticky;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 12px);z-index:5}
+}
+
+/* Filters */
+.filters{padding:18px;display:flex;flex-direction:column;gap:22px}
+.field-label{display:block;font-size:12.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.field-sub{text-transform:none;letter-spacing:0;font-weight:500;font-size:13px}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{min-height:44px;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:0 16px;font-size:15px;font-weight:600}
+.seg button:hover{border-color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.text-input{width:100%;height:48px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;font-size:16px}
+.text-input:focus{border-color:var(--brand);outline:none}
+.text-input::placeholder{color:var(--muted)}
+.avoid{margin-top:12px}
+.note{margin:8px 0 0;font-size:14px;color:var(--muted);line-height:1.45}
+.range-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.range-head .field-label{margin-bottom:0}
+.range-val{font-weight:800;font-size:16px}
+#time{width:100%;accent-color:var(--brand);margin:8px 0 0;height:44px;cursor:pointer}
+.range-scale{position:relative;height:18px;margin:0 9px;font-size:12px;font-weight:600;color:var(--muted)}
+.range-scale span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.range-scale span:first-child{transform:translateX(-9px)}
+.range-scale span:last-child{transform:translateX(calc(-100% + 9px))}
+.row2{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center}
+.stepper{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:999px;overflow:hidden}
+.stepper button{border:0;background:transparent;width:44px;height:44px;font-size:20px;font-weight:600}
+.stepper button:hover{background:var(--sunk)}
+.stepper output{min-width:32px;text-align:center;font-weight:800;font-size:16px}
+.switch{display:inline-flex;align-items:center;gap:12px;min-height:44px;font-size:15.5px;font-weight:500;cursor:pointer;user-select:none}
+.switch input{appearance:none;width:48px;height:28px;border-radius:999px;background:var(--line);position:relative;margin:0;cursor:pointer;transition:background .15s;flex:none}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.switch input:checked{background:var(--fresh)}
+.switch input:checked::after{transform:translateX(20px)}
+
+.summary{padding:14px 16px;display:flex;align-items:center;gap:12px;justify-content:space-between}
+.summary > div{min-width:0}
+.summary p{margin:0}
+.summary .eyebrow{color:var(--muted)}
+.summary-text{font-weight:600;font-size:15px;line-height:1.4}
+.btn{min-height:44px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:0 16px;font-weight:700;font-size:15px;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn-primary:hover{background:var(--brand-strong);border-color:var(--brand-strong)}
+.btn-saved{background:var(--fresh-soft);border-color:var(--fresh);color:var(--fresh)}
+
+/* Tabs (desktop) */
+.tabs{display:flex;gap:4px;padding:5px;background:var(--sunk);border-radius:14px;width:max-content;max-width:100%}
+.tabs button{min-height:40px;border:0;background:transparent;border-radius:10px;padding:0 18px;font-weight:700;font-size:15px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* Recipe cards */
+.results{display:flex;flex-direction:column;gap:14px}
+.results-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.results-head h2{font-family:var(--f-display);font-weight:700;font-size:1.35rem;margin:0;letter-spacing:-.015em}
+.results-head span{color:var(--muted);font-size:14px}
+.rcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:10px}
+.rcard-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px;font-weight:700;color:var(--muted)}
+.cuisine{color:var(--brand);letter-spacing:.07em;text-transform:uppercase;font-size:12.5px;font-weight:800}
+.time{display:inline-flex;align-items:center;gap:5px}
+.rcard h3{font-family:var(--f-display);font-weight:700;font-size:1.35rem;line-height:1.2;letter-spacing:-.015em;margin:0;text-wrap:balance}
+.rcard p{margin:0}
+.blurb{color:var(--ink);opacity:.9}
+.uses{font-size:14px;color:var(--muted)}
+.match{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;border-radius:999px;padding:5px 12px;font-size:14px;font-weight:700}
+.match.ok{background:var(--fresh-soft);color:var(--fresh)}
+.match.need{background:var(--saffron-soft);color:var(--saffron)}
+.diet-tags{display:flex;flex-wrap:wrap;gap:6px}
+.diet-tag{background:var(--fresh-soft);color:var(--fresh);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:700}
+.rcard .btn-primary{margin-top:4px;min-height:48px}
+.state{border:1.5px dashed var(--line);border-radius:var(--r-lg);padding:28px 22px}
+.state h3{font-family:var(--f-display);font-weight:700;font-size:1.3rem;margin:0 0 6px}
+.state p{margin:0;color:var(--muted);max-width:46ch}
+.notice{border-radius:var(--r-md);padding:14px 16px;font-size:15px;background:var(--saffron-soft)}
+.loading-row{display:flex;align-items:center;gap:12px;font-weight:700;min-height:44px}
+.loading-row .text-btn{margin-left:auto}
+.spinner{width:20px;height:20px;border-radius:50%;border:3px solid var(--brand-soft);border-top-color:var(--brand);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{height:170px;border-radius:var(--r-lg);background:linear-gradient(90deg,var(--sunk),var(--surface),var(--sunk));background-size:200% 100%;animation:shimmer 1.4s ease-in-out infinite;border:1px solid var(--line)}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+.more-loading{display:flex;flex-direction:column;gap:14px}
+.saved-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.saved-row > div{min-width:0}
+
+/* Bottom tab bar (phones) */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:space-around}
+.bottom-nav button{position:relative;flex:1;max-width:160px;height:var(--nav-h);border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.bottom-nav button[aria-current="page"]{color:var(--brand)}
+.badge{position:absolute;top:8px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:999px;background:var(--brand);color:var(--brand-ink);font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px}
+
+/* Recipe sheet */
+.sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:720px){.sheet{align-items:center}}
+.sheet-backdrop{position:absolute;inset:0;background:var(--scrim)}
+.sheet-panel{position:relative;background:var(--surface);width:100%;max-width:680px;max-height:calc(100% - 24px - env(safe-area-inset-top,0px));overflow-y:auto;border-radius:24px 24px 0 0;padding:6px max(20px,env(safe-area-inset-right,0px)) max(28px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));overscroll-behavior:contain}
+@media (min-width:720px){.sheet-panel{border-radius:24px;max-height:min(88vh,900px)}}
+.sheet-bar{position:sticky;top:0;display:flex;justify-content:flex-end;padding-top:10px;background:var(--surface);z-index:1}
+.icon-btn{border:0;background:var(--sunk);width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.icon-btn:hover{background:var(--line)}
+.sheet h2{font-family:var(--f-display);font-weight:800;font-size:clamp(1.75rem,5.5vw,2.4rem);line-height:1.08;letter-spacing:-.03em;margin:6px 0 10px;text-wrap:balance}
+.eyebrow{font-size:12.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--brand);margin:0}
+.lede{color:var(--muted);margin:0 0 16px;font-size:17px;max-width:56ch}
+.sheet-actions{display:flex;gap:8px;margin:4px 0 8px}
+.sec{font-family:var(--f-display);font-weight:700;font-size:1.25rem;margin:26px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ing{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ing li{display:grid;grid-template-columns:24px minmax(90px,auto) 1fr auto;gap:12px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line);font-size:16px}
+.ing li:last-child{border-bottom:0}
+.ing .mark{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--fresh-soft);color:var(--fresh);align-self:center}
+.ing .need .mark{background:var(--saffron-soft);color:var(--saffron)}
+.ing .amt{font-weight:700;font-size:15px}
+.ing .item{min-width:0;overflow-wrap:anywhere}
+.ing .tag{background:var(--saffron-soft);color:var(--saffron);border-radius:999px;padding:2px 9px;font-size:12.5px;font-weight:800}
+@media (max-width:420px){.ing li{grid-template-columns:22px 1fr auto;row-gap:2px}.ing .mark{grid-row:span 2}.ing .item{grid-column:2;grid-row:1}.ing .amt{grid-column:2;grid-row:2;color:var(--muted);font-weight:600}.ing .tag{grid-column:3;grid-row:1}}
+.steps{margin:0;padding:0;list-style:none;counter-reset:step;display:flex;flex-direction:column;gap:16px}
+.steps li{counter-increment:step;display:grid;grid-template-columns:34px 1fr;gap:12px;font-size:16.5px;line-height:1.6;max-width:64ch}
+.steps li::before{content:counter(step);font-weight:800;font-size:15px;width:32px;height:32px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center}
+.tip{margin-top:24px;padding:16px;border-radius:var(--r-md);background:var(--sunk)}
+.tip p{margin:4px 0 0}
+.writing{display:flex;gap:12px;align-items:flex-start;padding:18px 0}
+.writing p{margin:0}
+.muted{color:var(--muted)}
+
+@media (prefers-reduced-motion: reduce){
+  .spinner,.skel{animation:none}
+  .switch input,.switch input::after{transition:none}
+}
+</style>
+</head>
+<body>
+<header class="appbar gutter">
+  <div class="appbar-in">
+    <div>
+      <h1 class="wordmark"><span class="q">Q</span>uick <span class="q">Q</span>ook</h1>
+      <p class="tagline desktop-only">Tell it what's in your kitchen. Get dishes you can cook tonight.</p>
+    </div>
+    <div class="onhand" aria-live="polite"><strong id="total">0</strong> on hand</div>
+  </div>
+</header>
+
+<main class="app gutter">
+  <!-- Kitchen -->
+  <section class="view" id="view-kitchen" aria-labelledby="kitchen-h">
+    <div class="view-head">
+      <h2 id="kitchen-h">Your kitchen</h2>
+      <span class="status" id="status"></span>
+    </div>
+    <p class="sub mobile-only">Add what you have. Quick Qook builds recipes around it.</p>
+    <div class="banner" id="sample-banner" hidden>
+      <span>This is an example kitchen so you can try it. Edit it, or clear it to add your own.</span>
+      <button class="text-btn danger" type="button" data-clear>Clear all</button>
+    </div>
+    <div class="panel" id="shelves"></div>
+    <div class="row-end" id="kitchen-foot"><button class="text-btn danger" type="button" data-clear>Clear all</button></div>
+    <div class="sticky-cta mobile-only"><button class="cta" type="button" data-go="cook">Choose what to cook
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  </section>
+
+  <!-- Cook -->
+  <section class="view" id="view-cook" aria-labelledby="cook-h">
+    <div class="tabs desktop-only" role="tablist" aria-label="Recipes">
+      <button role="tab" type="button" data-go="cook" aria-selected="true" id="dtab-cook">Recipes</button>
+      <button role="tab" type="button" data-go="saved" aria-selected="false" id="dtab-saved-a">Saved</button>
+    </div>
+    <div class="view-head"><h2 id="cook-h">What are you making?</h2></div>
+
+    <div class="panel summary" id="filter-summary" hidden>
+      <div><p class="eyebrow">Your filters</p><p class="summary-text" id="summary-text"></p></div>
+      <button class="btn" type="button" data-edit-filters>Edit</button>
+    </div>
+
+    <div class="panel filters" id="filters">
+      <div>
+        <span class="field-label" id="meal-l">Meal</span>
+        <div class="seg" role="group" aria-labelledby="meal-l" id="meal-seg"></div>
+      </div>
+      <div>
+        <span class="field-label" id="cuisine-l">Type of food <span class="field-sub">(pick any, or none for all)</span></span>
+        <div class="seg" role="group" aria-labelledby="cuisine-l" id="cuisine-seg"></div>
+      </div>
+      <div>
+        <span class="field-label" id="method-l">How you'll cook it <span class="field-sub">(pick any, or none for all)</span></span>
+        <div class="seg" role="group" aria-labelledby="method-l" id="method-seg"></div>
+        <p class="note" id="slow-note" hidden>Crockpot and smoker recipes usually take hours. For those, your time limit applies to hands-on prep, not the cooking itself.</p>
+      </div>
+      <div>
+        <span class="field-label" id="diet-l">Dietary needs <span class="field-sub">(pick any)</span></span>
+        <div class="seg" role="group" aria-labelledby="diet-l" id="diet-seg"></div>
+        <input class="text-input avoid" id="avoid" maxlength="120" placeholder="Anything else to avoid? e.g. shellfish, pork" aria-label="Ingredients to avoid">
+        <p class="note" id="allergy-note" hidden>Suggestions follow these needs, but always check ingredient labels for hidden allergens.</p>
+      </div>
+      <div>
+        <div class="range-head"><label class="field-label" for="time">Time to cook</label><span class="range-val" id="time-val">Up to 30 min</span></div>
+        <input type="range" id="time" min="15" max="65" step="5" value="30">
+        <div class="range-scale" aria-hidden="true"><span style="left:0">15 min</span><span style="left:30%">30</span><span style="left:60%">45</span><span style="left:100%">1 hr+</span></div>
+      </div>
+      <div class="row2">
+        <div>
+          <span class="field-label" id="serv-l">Servings</span>
+          <div class="stepper" role="group" aria-labelledby="serv-l">
+            <button type="button" data-serv="-1" aria-label="Fewer servings">−</button>
+            <output id="servings">2</output>
+            <button type="button" data-serv="1" aria-label="More servings">+</button>
+          </div>
+        </div>
+        <label class="switch"><input type="checkbox" id="extras"> Allow 1–2 items I don't have</label>
+      </div>
+      <div>
+        <label class="field-label" for="craving">Craving anything? <span class="field-sub">(optional)</span></label>
+        <input class="text-input" id="craving" maxlength="80" placeholder="Something spicy, comfort food, one pan…">
+      </div>
+      <div class="sticky-cta"><button class="cta" type="button" id="find">Find recipes <small id="cta-count"></small></button></div>
+    </div>
+
+    <section class="results" id="results" aria-live="polite"></section>
+  </section>
+
+  <!-- Saved -->
+  <section class="view" id="view-saved" aria-labelledby="saved-h">
+    <div class="tabs desktop-only" role="tablist" aria-label="Recipes">
+      <button role="tab" type="button" data-go="cook" aria-selected="false">Recipes</button>
+      <button role="tab" type="button" data-go="saved" aria-selected="true" id="dtab-saved-b">Saved</button>
+    </div>
+    <div class="view-head"><h2 id="saved-h">Saved recipes</h2></div>
+    <div class="results" id="saved-list"></div>
+  </section>
+</main>
+
+<nav class="bottom-nav" aria-label="Main">
+  <button type="button" data-go="kitchen" id="nav-kitchen">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/></svg>
+    Kitchen</button>
+  <button type="button" data-go="cook" id="nav-cook">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="6"/><path d="M16 14h6M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3"/></svg>
+    Cook</button>
+  <button type="button" data-go="saved" id="nav-saved">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+    Saved<span class="badge" id="saved-badge" hidden></span></button>
+</nav>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel">
+    <div class="sheet-bar"><button class="icon-btn" type="button" id="sheet-close" data-close aria-label="Close recipe">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+const ICONS={
+  pantry:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5h8v3.5H8z"/><path d="M7 6h10a1.5 1.5 0 0 1 1.5 1.5V19a2.5 2.5 0 0 1-2.5 2.5H8A2.5 2.5 0 0 1 5.5 19V7.5A1.5 1.5 0 0 1 7 6z"/><path d="M5.5 11h13"/></svg>',
+  fridge:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/></svg>',
+  spices:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2.5h6v3.5H9z"/><path d="M8.5 6h7l1.5 3v10a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 19V9z"/><path d="M7 12.5h10"/></svg>'
+};
+const X_ICON='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const CLOCK='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const CHECK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const PLUS='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+
+const SHELVES=[
+  {key:'pantry',label:'Pantry',hint:'Grains, cans, baking, dry goods',staples:['rice','pasta','canned tomatoes','canned beans','flour','sugar','oats','bread','peanut butter','chicken broth','tortillas','potatoes']},
+  {key:'fridge',label:'Fridge & freezer',hint:'Produce, dairy, meat, frozen',staples:['eggs','butter','milk','cheddar','chicken breast','ground beef','onion','garlic','carrots','bell pepper','lemon','frozen peas']},
+  {key:'spices',label:'Spice cabinet',hint:'Spices, herbs, sauces, condiments',staples:['cumin','paprika','chili powder','oregano','cinnamon','garlic powder','soy sauce','hot sauce','honey','vinegar','mustard','dried basil']}
+];
+const SAMPLE={
+  pantry:['rice','spaghetti','canned black beans','canned diced tomatoes','flour','oats','peanut butter','chicken broth'],
+  fridge:['eggs','butter','cheddar','chicken thighs','spinach','onion','garlic','lemon','greek yogurt','frozen peas'],
+  spices:['cumin','chili powder','smoked paprika','oregano','soy sauce','honey','red pepper flakes']
+};
+const MEALS=['Any','Breakfast','Lunch','Dinner','Snack','Dessert'];
+const DIETS=['Vegetarian','Vegan','Pescatarian','Gluten-free','Dairy-free','Nut-free','Egg-free','Low-carb','Keto','Halal'];
+const ALLERGY_DIETS=['Gluten-free','Dairy-free','Nut-free','Egg-free'];
+const CUISINES=['American','BBQ','Southern','Mexican','Italian','Asian','Indian','Mediterranean','Middle Eastern','French'];
+const METHODS=['Stovetop','Oven','Grill','Blackstone','Smoker','Air fryer','Crockpot','Instant Pot','Microwave','No-cook'];
+const SLOW_METHODS=['Crockpot','Smoker'];
+function fmtMin(m){if(!m)return '';if(m<90)return m+' min';const h=Math.floor(m/60),r=m%60;return h+' hr'+(r?' '+r+' min':'')}
+function timeLabel(v){return v>=65?'1 hour or more':v===60?'Up to 1 hour':'Up to '+v+' min'}
+function toTime(t){if(t==='any')return 65;const n=Math.round(Number(t)/5)*5;return Number.isFinite(n)?Math.min(65,Math.max(15,n)):30}
+const LS_KITCHEN='qq-kitchen-v1', LS_SAVED='qq-saved-v1';
+const API_URL='/api/recipes';
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+const reduceMotion=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return true}};
+
+const S={kitchen:{pantry:[],fridge:[],spices:[]},prefs:{meal:'Any',time:30,servings:2,extras:true,craving:'',diets:[],avoid:'',cuisines:[],methods:[]},
+  isSample:false,ideas:[],ideasErr:null,loading:false,loadingMore:false,view:'kitchen',filtersOpen:true,saved:[],status:''};
+let ideasCtl=null, detailCtl=null, sheet=null, lastFocus=null;
+const recipeCache=new Map();
+
+function cleanItem(s){return String(s).replace(/\s+/g,' ').trim().toLowerCase().slice(0,40)}
+function applyData(d){
+  if(!d||typeof d!=='object') return false;
+  let any=false;
+  for(const s of SHELVES){
+    if(Array.isArray(d[s.key])){any=true;S.kitchen[s.key]=[...new Set(d[s.key].filter(x=>typeof x==='string').map(cleanItem).filter(Boolean))].slice(0,200)}
+  }
+  const p=d.prefs;
+  if(p&&typeof p==='object'){
+    if(MEALS.includes(p.meal)) S.prefs.meal=p.meal;
+    if(p.time!=null) S.prefs.time=toTime(p.time);
+    if(Array.isArray(p.cuisines)) S.prefs.cuisines=CUISINES.filter(x=>p.cuisines.includes(x));
+    if(Array.isArray(p.methods)) S.prefs.methods=METHODS.filter(x=>p.methods.includes(x));
+    if(Number.isFinite(p.servings)) S.prefs.servings=Math.min(12,Math.max(1,Math.round(p.servings)));
+    if(typeof p.extras==='boolean') S.prefs.extras=p.extras;
+    if(typeof p.craving==='string') S.prefs.craving=p.craving.slice(0,80);
+    if(Array.isArray(p.diets)) S.prefs.diets=DIETS.filter(x=>p.diets.includes(x));
+    if(typeof p.avoid==='string') S.prefs.avoid=p.avoid.slice(0,120);
+  }
+  if(any) S.isSample=false;
+  return any;
+}
+const total=()=>SHELVES.reduce((n,s)=>n+S.kitchen[s.key].length,0);
+
+/* ---------- saving (in this browser) ---------- */
+let saveTimer=null;
+function scheduleSave(){
+  S.isSample=false; renderBanner(); renderStatus();
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(persistKitchen,500);
+}
+function persistKitchen(){
+  const ok=lsSet(LS_KITCHEN,{pantry:S.kitchen.pantry,fridge:S.kitchen.fridge,spices:S.kitchen.spices,prefs:{...S.prefs},updatedAt:Date.now()});
+  setStatus(ok?'Saved on this device':"Couldn't save. Your browser may be blocking storage.");
+}
+function setStatus(t){S.status=t;renderStatus()}
+
+/* ---------- rendering ---------- */
+function renderShelves(){
+  $('#shelves').innerHTML=SHELVES.map(s=>{
+    const items=S.kitchen[s.key];
+    const sugg=s.staples.filter(x=>!items.includes(x)).slice(0,4);
+    return `<section class="shelf" data-shelf="${s.key}" style="--tone:var(--${s.key})" aria-label="${esc(s.label)}">
+      <div class="shelf-head"><span class="shelf-icon">${ICONS[s.key]}</span><div><h3>${esc(s.label)}</h3><p>${esc(s.hint)}</p></div><span class="count">${items.length}</span></div>
+      <div class="chips">${items.length?items.map(i=>`<span class="chip"><span class="label">${esc(i)}</span><button type="button" class="x" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${X_ICON}</button></span>`).join(''):'<p class="empty">Nothing here yet.</p>'}</div>
+      <form class="add" data-add="${s.key}"><input id="add-${s.key}" name="add-${s.key}" autocomplete="off" enterkeyhint="done" maxlength="200" placeholder="Add items, comma separated" aria-label="Add to ${esc(s.label)}"><button type="submit">Add</button></form>
+      ${sugg.length?`<div class="suggest"><span class="suggest-label">Quick add</span>${sugg.map(x=>`<button class="ghost" type="button" data-quick="${esc(x)}">+ ${esc(x)}</button>`).join('')}</div>`:''}
+    </section>`}).join('');
+  const t=total();
+  $('#total').textContent=t;
+  $('#cta-count').textContent='· '+t+' ingredient'+(t===1?'':'s');
+  renderBanner();
+}
+function renderBanner(){$('#sample-banner').hidden=!S.isSample;$('#kitchen-foot').hidden=total()===0||S.isSample}
+function renderStatus(){$('#status').textContent=S.isSample?'Example':S.status}
+function renderTime(){
+  const v=S.prefs.time, el=$('#time');
+  if(+el.value!==v) el.value=v;
+  $('#time-val').textContent=timeLabel(v);
+  el.setAttribute('aria-valuetext',timeLabel(v));
+}
+function renderPrefs(){
+  $('#meal-seg').innerHTML=MEALS.map(m=>`<button type="button" data-meal="${m}" aria-pressed="${S.prefs.meal===m}">${m}</button>`).join('');
+  $('#cuisine-seg').innerHTML=CUISINES.map(c=>`<button type="button" data-cuisine="${c}" aria-pressed="${S.prefs.cuisines.includes(c)}">${c}</button>`).join('');
+  $('#method-seg').innerHTML=METHODS.map(m=>`<button type="button" data-method="${m}" aria-pressed="${S.prefs.methods.includes(m)}">${m}</button>`).join('');
+  renderSlowNote();
+  $('#diet-seg').innerHTML=DIETS.map(d=>`<button type="button" data-diet="${d}" aria-pressed="${S.prefs.diets.includes(d)}">${d}</button>`).join('');
+  if(document.activeElement!==$('#avoid')) $('#avoid').value=S.prefs.avoid;
+  renderAllergyNote();
+  renderTime();
+  $('#servings').textContent=S.prefs.servings;
+  $('#extras').checked=S.prefs.extras;
+  if(document.activeElement!==$('#craving')) $('#craving').value=S.prefs.craving;
+  renderSummary();
+}
+function renderSlowNote(){$('#slow-note').hidden=!(S.prefs.time<65&&S.prefs.methods.some(m=>SLOW_METHODS.includes(m)))}
+function renderAllergyNote(){$('#allergy-note').hidden=!(S.prefs.diets.some(d=>ALLERGY_DIETS.includes(d))||S.prefs.avoid.trim())}
+function summaryText(){
+  const p=S.prefs;
+  return [p.meal==='Any'?'Any meal':p.meal,p.cuisines.length?p.cuisines.join(', '):'Any cuisine',p.methods.length?p.methods.join(', '):'Any method',p.diets.length?p.diets.join(', '):null,
+    timeLabel(p.time),'Serves '+p.servings,p.extras?'Extras OK':'Only what I have'].filter(Boolean).join(' · ');
+}
+function renderSummary(){
+  $('#filters').hidden=!S.filtersOpen;
+  $('#filter-summary').hidden=S.filtersOpen;
+  $('#summary-text').textContent=summaryText();
+}
+function renderNav(){
+  document.body.dataset.view=S.view;
+  for(const v of ['kitchen','cook','saved']){
+    const b=$('#nav-'+v); if(v===S.view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
+  }
+  const n=S.saved.length, badge=$('#saved-badge');
+  badge.hidden=!n; badge.textContent=n>99?'99+':n;
+  document.querySelectorAll('[id^="dtab-saved"]').forEach(b=>b.textContent='Saved'+(n?' ('+n+')':''));
+}
+function go(view){
+  if(S.view===view) return;
+  S.view=view; renderNav();
+  if(view==='saved') renderSaved();
+  try{window.scrollTo({top:0,behavior:'auto'})}catch(e){window.scrollTo(0,0)}
+}
+function dietTags(list){return `<div class="diet-tags">${list.map(d=>`<span class="diet-tag">${esc(d)}</span>`).join('')}</div>`}
+function metaLine(r){return [r.cuisine||null,r.method||null,r.servings?'Serves '+r.servings:null,r.minutes?fmtMin(r.minutes):null,r.difficulty||null].filter(Boolean).join(' · ')}
+function matchBadge(r){
+  if(!r.missing||!r.missing.length) return `<span class="match ok">${CHECK} You have everything</span>`;
+  return `<span class="match need">${PLUS} Need ${r.missing.length}: ${esc(r.missing.join(', '))}</span>`;
+}
+function ideaCard(r,i){
+  return `<article class="rcard">
+    <div class="rcard-top">${r.cuisine?`<span class="cuisine">${esc(r.cuisine)}</span>`:''}${r.method?`<span>${esc(r.method)}</span>`:''}${r.minutes?`<span class="time">${CLOCK}${fmtMin(r.minutes)}</span>`:''}${r.difficulty?`<span>${esc(r.difficulty)}</span>`:''}</div>
+    <h3>${esc(r.title)}</h3>
+    ${r.blurb?`<p class="blurb">${esc(r.blurb)}</p>`:''}
+    ${matchBadge(r)}
+    ${r.uses.length?`<p class="uses">Uses ${esc(r.uses.slice(0,6).join(', '))}${r.uses.length>6?' +'+(r.uses.length-6)+' more':''}</p>`:''}
+    ${r.diets&&r.diets.length?dietTags(r.diets):''}
+    <button class="btn btn-primary" type="button" data-idea="${i}">View recipe</button>
+  </article>`;
+}
+function renderResults(){
+  const el=$('#results');
+  $('#find').disabled=S.loading;
+  const loadingRow=`<div class="loading-row"><span class="spinner" aria-hidden="true"></span><span>${S.loadingMore?'Finding more ideas…':'Looking through your kitchen…'}</span><button class="text-btn" type="button" data-stop>Stop</button></div>`;
+  if(S.loading&&!S.loadingMore){
+    el.innerHTML=loadingRow+`<div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
+    return;
+  }
+  let html='';
+  if(!S.ideas.length){
+    if(S.ideasErr) html+=`<div class="notice">${esc(S.ideasErr)}</div>`;
+    else html+=`<div class="state"><h3>Your recipes show up here</h3><p>Set your filters, then tap Find recipes. You'll get five dishes built from what's on your shelves.</p></div>`;
+  } else {
+    html+=`<div class="results-head"><h2>Recipe ideas</h2><span>${S.ideas.length} found</span></div>`;
+    html+=S.ideas.map(ideaCard).join('');
+    if(S.ideasErr) html+=`<div class="notice">${esc(S.ideasErr)}</div>`;
+    if(S.loading) html+=`<div class="more-loading">${loadingRow}<div class="skel"></div><div class="skel"></div></div>`;
+    else html+=`<button class="btn" type="button" data-more style="min-height:52px">Show 5 more ideas</button>`;
+  }
+  el.innerHTML=html;
+}
+function renderSaved(){
+  $('#saved-list').innerHTML=S.saved.length?S.saved.map(r=>`<article class="rcard"><div class="saved-row"><div><div class="rcard-top">${r.cuisine?`<span class="cuisine">${esc(r.cuisine)}</span>`:''}${r.method?`<span>${esc(r.method)}</span>`:''}${r.minutes?`<span class="time">${CLOCK}${fmtMin(r.minutes)}</span>`:''}</div><h3>${esc(r.title)}</h3></div><button class="btn btn-primary" type="button" data-open-saved="${esc(r.id)}">Open</button></div>${r.diets&&r.diets.length?dietTags(r.diets):''}</article>`).join('')
+    :`<div class="state"><h3>No saved recipes yet</h3><p>Open any recipe and tap Save recipe to keep it here for next time.</p></div>`;
+}
+function renderAll(){renderShelves();renderStatus();renderPrefs();renderNav();renderResults();renderSaved()}
+
+/* ---------- kitchen edits ---------- */
+function addItems(shelf,raw){
+  const list=S.kitchen[shelf]; let added=0;
+  for(const part of String(raw).split(',')){const it=cleanItem(part); if(it&&!list.includes(it)&&list.length<200){list.push(it);added++}}
+  if(added){renderShelves();scheduleSave()}
+  return added;
+}
+function removeItem(shelf,item){S.kitchen[shelf]=S.kitchen[shelf].filter(x=>x!==item);renderShelves();scheduleSave()}
+let clearArmed=null;
+function clearAll(btn){
+  if(clearArmed!==btn){
+    document.querySelectorAll('[data-clear]').forEach(b=>b.textContent='Clear all');
+    clearArmed=btn; btn.textContent='Tap again to clear';
+    setTimeout(()=>{if(clearArmed===btn){clearArmed=null;btn.textContent='Clear all'}},3500);
+    return;
+  }
+  clearArmed=null;
+  for(const s of SHELVES) S.kitchen[s.key]=[];
+  S.isSample=false; S.ideas=[]; S.ideasErr=null; S.filtersOpen=true;
+  document.querySelectorAll('[data-clear]').forEach(b=>b.textContent='Clear all');
+  renderAll(); scheduleSave();
+  const f=$('#add-pantry'); if(f) f.focus();
+}
+
+/* ---------- talking to the recipe server ---------- */
+async function callApi(payload,signal){
+  let r;
+  try{
+    r=await fetch(API_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),signal});
+  }catch(e){
+    if(e&&e.name==='AbortError') throw {code:'cancelled'};
+    throw {code:'network'};
+  }
+  let data=null; try{data=await r.json()}catch(e){}
+  if(!r.ok||!data||!('result' in data)) throw {code:(data&&data.error)||(r.status===404||r.status===405?'no_api':'upstream_error')};
+  return data.result;
+}
+function basePayload(){return {kitchen:{...S.kitchen},prefs:{...S.prefs}}}
+function errCopy(e){
+  switch(e&&e.code){
+    case 'missing_key': return "The recipe server isn't set up yet. Add ANTHROPIC_API_KEY in your Vercel project's environment variables, then redeploy.";
+    case 'bad_key': return "The recipe server's API key was rejected. Check ANTHROPIC_API_KEY in your Vercel project settings.";
+    case 'no_api': return "The recipe server wasn't found. Quick Qook needs to run on Vercel (with the api folder) to find recipes.";
+    case 'rate_limited': return "Too many requests right now. Wait a minute, then try again.";
+    case 'network': return "Couldn't connect. Check your internet connection and try again.";
+    case 'invalid_json': return "The recipes came back incomplete. Try again.";
+    case 'bad_request': return "Something in the request didn't look right. Check your ingredients and try again.";
+    default: return "Something went wrong finding recipes. Try again.";
+  }
+}
+function strArr(a,n){return Array.isArray(a)?a.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim().slice(0,60)).slice(0,n):[]}
+function normIdea(r){
+  if(!r||typeof r!=='object'||typeof r.title!=='string'||!r.title.trim()) return null;
+  return {title:r.title.trim().slice(0,90),cuisine:typeof r.cuisine==='string'?r.cuisine.trim().slice(0,30):'',
+    method:typeof r.method==='string'?(METHODS.find(m=>m.toLowerCase()===r.method.trim().toLowerCase())||r.method.trim().slice(0,24)):'',
+    blurb:typeof r.blurb==='string'?r.blurb.slice(0,240):'',
+    minutes:Number.isFinite(+r.minutes)&&+r.minutes>0?Math.round(+r.minutes):null,
+    difficulty:['Easy','Medium','Hard'].includes(r.difficulty)?r.difficulty:'',
+    uses:strArr(r.uses,20),missing:S.prefs.extras?strArr(r.missing,3):[],diets:[...S.prefs.diets]};
+}
+async function findRecipes(more){
+  more=!!(more&&S.ideas.length);
+  if(total()<3){S.ideasErr='Add at least three ingredients so there is something to cook with.';renderResults();return}
+  if(ideasCtl) ideasCtl.abort();
+  const ctl=new AbortController(); ideasCtl=ctl;
+  S.loading=true; S.loadingMore=more; S.ideasErr=null;
+  if(!more){S.filtersOpen=false;renderSummary();if(S.view!=='cook')go('cook');else{try{window.scrollTo({top:0,behavior:reduceMotion()?'auto':'smooth'})}catch(e){}}}
+  renderResults();
+  try{
+    const res=await callApi({type:'ideas',...basePayload(),seen:more?S.ideas.map(i=>i.title):[]},ctl.signal);
+    let list=(Array.isArray(res)?res:(res&&Array.isArray(res.recipes)?res.recipes:[])).map(normIdea).filter(Boolean).slice(0,6);
+    if(more){
+      const seen=new Set(S.ideas.map(i=>i.title.toLowerCase()));
+      list=list.filter(i=>!seen.has(i.title.toLowerCase()));
+    }
+    if(!list.length) S.ideasErr=more?'No new ideas came back. Try again, or loosen your filters.':'No recipes came back. Try again, or add a few more ingredients.';
+    else S.ideas=more?S.ideas.concat(list).slice(0,60):list;
+  }catch(e){
+    if(e&&e.code!=='cancelled') S.ideasErr=errCopy(e);
+  }finally{
+    if(ideasCtl===ctl){ideasCtl=null;S.loading=false;S.loadingMore=false;renderResults()}
+  }
+}
+function slug(t){return (String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60))||('recipe-'+Date.now())}
+function normRecipe(r,idea){
+  if(!r||typeof r!=='object') return null;
+  const ing=Array.isArray(r.ingredients)?r.ingredients.filter(x=>x&&typeof x.item==='string').map(x=>({item:x.item.slice(0,80),amount:typeof x.amount==='string'?x.amount.slice(0,30):'',have:x.have!==false})).slice(0,40):[];
+  const steps=Array.isArray(r.steps)?r.steps.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim().replace(/^\d+[.)]\s*/,'').slice(0,600)).slice(0,30):[];
+  if(!ing.length||!steps.length) return null;
+  const title=(typeof r.title==='string'&&r.title.trim())?r.title.trim().slice(0,90):idea.title;
+  return {id:slug(title),title,blurb:idea.blurb||'',servings:Number.isFinite(+r.servings)?Math.round(+r.servings):S.prefs.servings,
+    minutes:Number.isFinite(+r.minutes)&&+r.minutes>0?Math.round(+r.minutes):idea.minutes,
+    difficulty:['Easy','Medium','Hard'].includes(r.difficulty)?r.difficulty:idea.difficulty,
+    cuisine:idea.cuisine||'',method:idea.method||'',ingredients:ing,steps,tip:typeof r.tip==='string'?r.tip.slice(0,400):'',diets:Array.isArray(idea.diets)?idea.diets:[...S.prefs.diets]};
+}
+async function loadDetail(){
+  const idea=sheet.idea;
+  const key=JSON.stringify([idea.title,S.prefs.servings,S.prefs.diets,S.prefs.avoid,S.prefs.extras]);
+  if(recipeCache.has(key)){sheet.recipe=recipeCache.get(key);sheet.loading=false;sheet.err=null;renderSheet();return}
+  if(detailCtl) detailCtl.abort();
+  const ctl=new AbortController(); detailCtl=ctl;
+  sheet.loading=true; sheet.err=null; renderSheet();
+  try{
+    const r=await callApi({type:'recipe',...basePayload(),idea:{title:idea.title,blurb:idea.blurb,minutes:idea.minutes,method:idea.method,cuisine:idea.cuisine}},ctl.signal);
+    if(sheet&&sheet.idea===idea){
+      const rec=normRecipe(r,idea);
+      if(rec){sheet.recipe=rec;recipeCache.set(key,rec)} else sheet.err='That recipe came back incomplete. Tap Try again.';
+    }
+  }catch(e){
+    if(e&&e.code!=='cancelled'&&sheet&&sheet.idea===idea) sheet.err=errCopy(e);
+  }finally{
+    if(detailCtl===ctl){detailCtl=null; if(sheet&&sheet.idea===idea){sheet.loading=false;renderSheet()}}
+  }
+}
+
+/* ---------- recipe sheet ---------- */
+function openSheet(state){
+  lastFocus=document.activeElement; sheet=state;
+  $('#sheet').hidden=false; document.body.style.overflow='hidden';
+  renderSheet(); $('.sheet-panel').scrollTop=0; $('#sheet-close').focus();
+}
+function closeSheet(){
+  if(detailCtl){detailCtl.abort();detailCtl=null}
+  sheet=null; $('#sheet').hidden=true; document.body.style.overflow='';
+  if(lastFocus&&lastFocus.focus) try{lastFocus.focus()}catch(e){}
+}
+function renderSheet(){
+  if(!sheet) return;
+  const r=sheet.recipe||sheet.idea;
+  let h=`<p class="eyebrow">${esc(metaLine(sheet.recipe||{...r,servings:S.prefs.servings}))}</p><h2 id="sheet-title">${esc(r.title)}</h2>${r.diets&&r.diets.length?`<div style="margin-bottom:12px">${dietTags(r.diets)}</div>`:''}${r.blurb?`<p class="lede">${esc(r.blurb)}</p>`:''}`;
+  if(sheet.loading) h+=`<div class="writing"><span class="spinner" aria-hidden="true"></span><div><p><strong>Writing the full recipe…</strong></p><p class="muted">This usually takes 10 to 30 seconds.</p></div></div>`;
+  else if(sheet.err) h+=`<div class="notice">${esc(sheet.err)} <button class="text-btn" type="button" data-retry>Try again</button></div>`;
+  else if(sheet.recipe){
+    const rc=sheet.recipe, isSaved=S.saved.some(x=>x.id===rc.id);
+    h+=`<div class="sheet-actions"><button class="btn ${isSaved?'btn-saved':'btn-primary'}" type="button" data-toggle-save aria-pressed="${isSaved}">${isSaved?'Saved':'Save recipe'}</button></div>
+    <h3 class="sec">Ingredients</h3>
+    <ul class="ing">${rc.ingredients.map(i=>`<li class="${i.have?'have':'need'}"><span class="mark">${i.have?CHECK:PLUS}</span><span class="amt">${esc(i.amount)}</span><span class="item">${esc(i.item)}</span>${i.have?'<span></span>':'<span class="tag">Need</span>'}</li>`).join('')}</ul>
+    <h3 class="sec">Steps</h3>
+    <ol class="steps">${rc.steps.map(s=>`<li><span>${esc(s)}</span></li>`).join('')}</ol>
+    ${rc.tip?`<div class="tip"><p class="eyebrow">Cook's tip</p><p>${esc(rc.tip)}</p></div>`:''}`;
+  }
+  $('#sheet-body').innerHTML=h;
+}
+function toggleSave(){
+  const rc=sheet&&sheet.recipe; if(!rc) return;
+  const i=S.saved.findIndex(x=>x.id===rc.id);
+  if(i>=0) S.saved.splice(i,1); else S.saved.unshift({...rc,savedAt:Date.now()});
+  lsSet(LS_SAVED,S.saved); renderSheet(); renderNav(); renderSaved();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,[data-close]'); if(!t) return;
+  const d=t.dataset;
+  if(d.remove!==undefined){const sh=t.closest('[data-shelf]').dataset.shelf;removeItem(sh,d.remove);return}
+  if(d.quick!==undefined){const sh=t.closest('[data-shelf]').dataset.shelf;addItems(sh,d.quick);return}
+  if(d.clear!==undefined){clearAll(t);return}
+  if(d.go){go(d.go);return}
+  if(d.meal){S.prefs.meal=d.meal;renderPrefs();scheduleSave();return}
+  if(d.cuisine){const cs=S.prefs.cuisines;S.prefs.cuisines=cs.includes(d.cuisine)?cs.filter(x=>x!==d.cuisine):CUISINES.filter(x=>cs.includes(x)||x===d.cuisine);renderPrefs();scheduleSave();return}
+  if(d.method){const ms=S.prefs.methods;S.prefs.methods=ms.includes(d.method)?ms.filter(x=>x!==d.method):METHODS.filter(x=>ms.includes(x)||x===d.method);renderPrefs();scheduleSave();return}
+  if(d.diet){const ds=S.prefs.diets;S.prefs.diets=ds.includes(d.diet)?ds.filter(x=>x!==d.diet):DIETS.filter(x=>ds.includes(x)||x===d.diet);renderPrefs();scheduleSave();return}
+  if(d.serv){S.prefs.servings=Math.min(12,Math.max(1,S.prefs.servings+(+d.serv)));renderPrefs();scheduleSave();return}
+  if(d.editFilters!==undefined){S.filtersOpen=true;renderSummary();const f=$('#meal-seg button');if(f)f.focus();return}
+  if(t.id==='find'){findRecipes(false);return}
+  if(d.more!==undefined){findRecipes(true);return}
+  if(d.stop!==undefined){if(ideasCtl){ideasCtl.abort();ideasCtl=null}S.loading=false;S.loadingMore=false;renderResults();return}
+  if(d.idea!==undefined){const idea=S.ideas[+d.idea];if(idea){openSheet({idea,recipe:null,loading:true,err:null});loadDetail()}return}
+  if(d.openSaved!==undefined){const r=S.saved.find(x=>x.id===d.openSaved);if(r)openSheet({idea:r,recipe:r,loading:false,err:null});return}
+  if(d.close!==undefined){closeSheet();return}
+  if(d.toggleSave!==undefined){toggleSave();return}
+  if(d.retry!==undefined){loadDetail();return}
+});
+document.addEventListener('submit',e=>{
+  const f=e.target.closest('form[data-add]'); if(!f) return;
+  e.preventDefault();
+  const sh=f.dataset.add, inp=f.querySelector('input'), v=inp.value;
+  if(!v.trim()) return;
+  addItems(sh,v);
+  const again=$('#add-'+sh); if(again){again.value='';again.focus()}
+});
+$('#time').addEventListener('input',e=>{S.prefs.time=toTime(e.target.value);renderTime();renderSlowNote();renderSummary();scheduleSave()});
+$('#extras').addEventListener('change',e=>{S.prefs.extras=e.target.checked;scheduleSave()});
+$('#craving').addEventListener('input',e=>{S.prefs.craving=e.target.value.slice(0,80);scheduleSave()});
+$('#avoid').addEventListener('input',e=>{S.prefs.avoid=e.target.value.slice(0,120);renderAllergyNote();scheduleSave()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
+
+/* ---------- start ---------- */
+if(!applyData(lsGet(LS_KITCHEN))){applyData(SAMPLE);S.isSample=true}
+else S.status='Saved on this device';
+const ls=lsGet(LS_SAVED); if(Array.isArray(ls)) S.saved=ls.filter(r=>r&&typeof r.title==='string'&&Array.isArray(r.steps));
+renderAll();
+})();
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@
   --brand:#D2392B; --brand-ink:#FFFFFF; --brand-soft:#FDEBE7; --brand-strong:#B32E22;
   --fresh:#2A7849; --fresh-soft:#E2F2E7;
   --saffron:#875805; --saffron-soft:#FAEED1;
-  --pantry:#B07A1F; --fridge:#2E7DAE; --spices:#C2412C;
+  --pantry:#B07A1F; --fridge:#2E7DAE; --spices:#C2412C; --star:#C27C00;
   --shadow:0 1px 2px rgba(40,24,16,.06),0 6px 20px rgba(40,24,16,.06);
   --scrim:rgba(20,12,8,.5);
   --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
@@ -36,7 +36,7 @@
     --brand:#FF6A55; --brand-ink:#1C0905; --brand-soft:#3B1C16; --brand-strong:#FF8572;
     --fresh:#6CCB8E; --fresh-soft:#17301F;
     --saffron:#F1C264; --saffron-soft:#3A2D14;
-    --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70;
+    --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70; --star:#F5C451;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
     --scrim:rgba(0,0,0,.6); color-scheme:dark;
   }
@@ -46,7 +46,7 @@
   --brand:#FF6A55; --brand-ink:#1C0905; --brand-soft:#3B1C16; --brand-strong:#FF8572;
   --fresh:#6CCB8E; --fresh-soft:#17301F;
   --saffron:#F1C264; --saffron-soft:#3A2D14;
-  --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70;
+  --pantry:#E0B064; --fridge:#7DBBE3; --spices:#F08A70; --star:#F5C451;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
   --scrim:rgba(0,0,0,.6); color-scheme:dark;
 }
@@ -72,7 +72,7 @@ svg{flex:none}
 /* Screens */
 .app{max-width:1212px;margin:0 auto;padding-block:4px 32px}
 .view{display:none;min-width:0}
-body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[data-view="saved"] #view-saved{display:flex;flex-direction:column;gap:16px}
+body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[data-view="saved"] #view-saved,body[data-view="history"] #view-history{display:flex;flex-direction:column;gap:16px}
 @media (max-width:919px){
   .app{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 28px)}
   .desktop-only{display:none!important}
@@ -80,7 +80,7 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
 @media (min-width:920px){
   .app{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;align-items:start}
   #view-kitchen{grid-column:1;grid-row:1;display:flex!important;flex-direction:column;gap:16px}
-  #view-cook,#view-saved{grid-column:2;grid-row:1}
+  #view-cook,#view-saved,#view-history{grid-column:2;grid-row:1}
   body[data-view="kitchen"] #view-cook{display:flex;flex-direction:column;gap:16px}
   .mobile-only{display:none!important}
   .bottom-nav{display:none!important}
@@ -209,6 +209,20 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 .more-loading{display:flex;flex-direction:column;gap:14px}
 .saved-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.stars{display:inline-flex;align-items:center;margin-left:-8px}
+.star{border:0;background:transparent;width:40px;height:44px;display:grid;place-items:center;color:var(--line);padding:0}
+.star.on{color:var(--star)}
+.star:hover{color:var(--star)}
+.cooked-panel{margin-top:4px;padding:14px 16px;border-radius:var(--r-md);background:var(--fresh-soft);display:flex;flex-direction:column;gap:6px}
+.cooked-panel p{margin:0}
+.cooked-panel .eyebrow{color:var(--fresh)}
+.cooked-panel textarea{width:100%;min-height:76px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;resize:vertical;margin-top:4px}
+.cooked-panel textarea:focus{border-color:var(--fresh);outline:none}
+.cook-stats{margin:0 0 8px;color:var(--muted);font-size:14.5px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.day-label{font-size:12.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:10px 0 -4px}
+.hist-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.hist-note{font-size:15px;color:var(--ink);background:var(--sunk);border-radius:12px;padding:10px 12px}
+.hist-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .saved-row > div{min-width:0}
 
 /* Bottom tab bar (phones) */
@@ -289,6 +303,7 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
     <div class="tabs desktop-only" role="tablist" aria-label="Recipes">
       <button role="tab" type="button" data-go="cook" aria-selected="true" id="dtab-cook">Recipes</button>
       <button role="tab" type="button" data-go="saved" aria-selected="false" id="dtab-saved-a">Saved</button>
+      <button role="tab" type="button" data-go="history" aria-selected="false">History</button>
     </div>
     <div class="view-head"><h2 id="cook-h">What are you making?</h2></div>
 
@@ -349,9 +364,21 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
     <div class="tabs desktop-only" role="tablist" aria-label="Recipes">
       <button role="tab" type="button" data-go="cook" aria-selected="false">Recipes</button>
       <button role="tab" type="button" data-go="saved" aria-selected="true" id="dtab-saved-b">Saved</button>
+      <button role="tab" type="button" data-go="history" aria-selected="false">History</button>
     </div>
     <div class="view-head"><h2 id="saved-h">Saved recipes</h2></div>
     <div class="results" id="saved-list"></div>
+  </section>
+
+  <!-- History -->
+  <section class="view" id="view-history" aria-labelledby="history-h">
+    <div class="tabs desktop-only" role="tablist" aria-label="Recipes">
+      <button role="tab" type="button" data-go="cook" aria-selected="false">Recipes</button>
+      <button role="tab" type="button" data-go="saved" aria-selected="false" id="dtab-saved-c">Saved</button>
+      <button role="tab" type="button" data-go="history" aria-selected="true">History</button>
+    </div>
+    <div class="view-head"><h2 id="history-h">Cooking history</h2><span class="status" id="history-count"></span></div>
+    <div class="results" id="history-list"></div>
   </section>
 </main>
 
@@ -365,6 +392,9 @@ body[data-view="kitchen"] #view-kitchen,body[data-view="cook"] #view-cook,body[d
   <button type="button" data-go="saved" id="nav-saved">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
     Saved<span class="badge" id="saved-badge" hidden></span></button>
+  <button type="button" data-go="history" id="nav-history">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 3.5V8h4.5"/><path d="M12 7.5V12l3 2"/></svg>
+    History</button>
 </nav>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -407,7 +437,8 @@ const SLOW_METHODS=['Crockpot','Smoker'];
 function fmtMin(m){if(!m)return '';if(m<90)return m+' min';const h=Math.floor(m/60),r=m%60;return h+' hr'+(r?' '+r+' min':'')}
 function timeLabel(v){return v>=65?'1 hour or more':v===60?'Up to 1 hour':'Up to '+v+' min'}
 function toTime(t){if(t==='any')return 65;const n=Math.round(Number(t)/5)*5;return Number.isFinite(n)?Math.min(65,Math.max(15,n)):30}
-const LS_KITCHEN='qq-kitchen-v1', LS_SAVED='qq-saved-v1';
+const LS_KITCHEN='qq-kitchen-v1', LS_SAVED='qq-saved-v1', LS_HISTORY='qq-history-v1';
+const STAR='<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 const API_URL='/api/recipes';
 
 const $=s=>document.querySelector(s);
@@ -417,7 +448,7 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}ca
 const reduceMotion=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return true}};
 
 const S={kitchen:{pantry:[],fridge:[],spices:[]},prefs:{meal:'Any',time:30,servings:2,extras:true,craving:'',diets:[],avoid:'',cuisines:[],methods:[],kids:false},
-  isSample:false,ideas:[],ideasErr:null,loading:false,loadingMore:false,view:'kitchen',filtersOpen:true,saved:[],status:''};
+  isSample:false,ideas:[],ideasErr:null,loading:false,loadingMore:false,view:'kitchen',filtersOpen:true,saved:[],history:[],status:''};
 let ideasCtl=null, detailCtl=null, sheet=null, lastFocus=null;
 const recipeCache=new Map();
 
@@ -512,7 +543,7 @@ function renderSummary(){
 }
 function renderNav(){
   document.body.dataset.view=S.view;
-  for(const v of ['kitchen','cook','saved']){
+  for(const v of ['kitchen','cook','saved','history']){
     const b=$('#nav-'+v); if(v===S.view) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
   }
   const n=S.saved.length, badge=$('#saved-badge');
@@ -523,6 +554,7 @@ function go(view){
   if(S.view===view) return;
   S.view=view; renderNav();
   if(view==='saved') renderSaved();
+  if(view==='history') renderHistory();
   try{window.scrollTo({top:0,behavior:'auto'})}catch(e){window.scrollTo(0,0)}
 }
 function dietTags(list){return `<div class="diet-tags">${list.map(d=>`<span class="diet-tag">${esc(d)}</span>`).join('')}</div>`}
@@ -567,7 +599,71 @@ function renderSaved(){
   $('#saved-list').innerHTML=S.saved.length?S.saved.map(r=>`<article class="rcard"><div class="saved-row"><div><div class="rcard-top">${r.cuisine?`<span class="cuisine">${esc(r.cuisine)}</span>`:''}${r.method?`<span>${esc(r.method)}</span>`:''}${r.minutes?`<span class="time">${CLOCK}${fmtMin(r.minutes)}</span>`:''}</div><h3>${esc(r.title)}</h3></div><button class="btn btn-primary" type="button" data-open-saved="${esc(r.id)}">Open</button></div>${r.diets&&r.diets.length?dietTags(r.diets):''}</article>`).join('')
     :`<div class="state"><h3>No saved recipes yet</h3><p>Open any recipe and tap Save recipe to keep it here for next time.</p></div>`;
 }
-function renderAll(){renderShelves();renderStatus();renderPrefs();renderNav();renderResults();renderSaved()}
+/* ---------- cooking history ---------- */
+function saveHistory(){if(!lsSet(LS_HISTORY,S.history)){S.history=S.history.slice(0,60);lsSet(LS_HISTORY,S.history)}}
+function historyFor(id){return S.history.filter(h=>h.id===id)}
+function starsHtml(entry,size){
+  let h=`<span class="stars" role="group" aria-label="Your rating">`;
+  for(let n=1;n<=5;n++) h+=`<button type="button" class="star${entry.rating>=n?' on':''}" data-rate="${n}" data-hid="${esc(entry.hid)}" aria-label="Rate ${n} star${n>1?'s':''}" aria-pressed="${entry.rating===n}">${STAR}</button>`;
+  return h+'</span>';
+}
+function dayLabel(ts){
+  const d=new Date(ts), today=new Date(); today.setHours(0,0,0,0);
+  const day=new Date(d); day.setHours(0,0,0,0);
+  const diff=Math.round((today-day)/864e5);
+  if(diff===0) return 'Today';
+  if(diff===1) return 'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:d.getFullYear()===today.getFullYear()?undefined:'numeric'});
+}
+function shortDate(ts){return new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})}
+function markCooked(){
+  const rc=sheet&&sheet.recipe; if(!rc) return;
+  const e={hid:'h'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),id:rc.id,title:rc.title,cuisine:rc.cuisine||'',method:rc.method||'',
+    minutes:rc.minutes||null,diets:rc.diets||[],cookedAt:Date.now(),rating:0,note:'',recipe:{...rc}};
+  S.history.unshift(e); S.history=S.history.slice(0,150); saveHistory();
+  sheet.hid=e.hid; sheet.fromHistory=false; renderSheet(); renderHistory();
+  const ta=$('#cook-note'); if(ta) ta.scrollIntoView({block:'nearest',behavior:reduceMotion()?'auto':'smooth'});
+}
+function rateEntry(hid,n){
+  const e=S.history.find(h=>h.hid===hid); if(!e) return;
+  e.rating=e.rating===n?0:n; saveHistory();
+  if(sheet) renderSheet();
+  renderHistory();
+}
+let noteTimer=null;
+function noteEntry(hid,text){
+  const e=S.history.find(h=>h.hid===hid); if(!e) return;
+  e.note=text.slice(0,500);
+  clearTimeout(noteTimer); noteTimer=setTimeout(()=>{saveHistory();renderHistory()},500);
+}
+let delArmed=null;
+function deleteEntry(btn,hid){
+  if(delArmed!==btn){delArmed=btn;btn.textContent='Tap again to remove';setTimeout(()=>{if(delArmed===btn){delArmed=null;btn.textContent='Remove'}},3500);return}
+  delArmed=null; S.history=S.history.filter(h=>h.hid!==hid); saveHistory(); renderHistory();
+}
+function renderHistory(){
+  const el=$('#history-list'); if(!el) return;
+  $('#history-count').textContent=S.history.length?S.history.length+' meal'+(S.history.length===1?'':'s')+' cooked':'';
+  if(!S.history.length){
+    el.innerHTML=`<div class="state"><h3>Nothing cooked yet</h3><p>After you make a recipe, open it and tap Cooked it. Your ratings and notes for next time will show up here.</p></div>`;
+    return;
+  }
+  const counts={}; for(const h of S.history) counts[h.id]=(counts[h.id]||0)+1;
+  let html='', last='';
+  for(const h of S.history){
+    const label=dayLabel(h.cookedAt);
+    if(label!==last){html+=`<p class="day-label">${esc(label)}</p>`;last=label}
+    html+=`<article class="rcard">
+      <div class="rcard-top">${h.cuisine?`<span class="cuisine">${esc(h.cuisine)}</span>`:''}${h.method?`<span>${esc(h.method)}</span>`:''}${h.minutes?`<span class="time">${CLOCK}${fmtMin(h.minutes)}</span>`:''}</div>
+      <h3>${esc(h.title)}</h3>
+      <div class="hist-row">${starsHtml(h)}${counts[h.id]>1?`<span class="muted">Cooked ${counts[h.id]} times</span>`:''}</div>
+      ${h.note?`<p class="hist-note">${esc(h.note)}</p>`:''}
+      <div class="hist-actions"><button class="btn btn-primary" type="button" data-open-hist="${esc(h.hid)}">Open recipe</button><button class="text-btn" type="button" data-del-hist="${esc(h.hid)}">Remove</button></div>
+    </article>`;
+  }
+  el.innerHTML=html;
+}
+function renderAll(){renderShelves();renderStatus();renderPrefs();renderNav();renderResults();renderSaved();renderHistory()}
 
 /* ---------- kitchen edits ---------- */
 function addItems(shelf,raw){
@@ -696,6 +792,7 @@ function openSheet(state){
 }
 function closeSheet(){
   if(detailCtl){detailCtl.abort();detailCtl=null}
+  if(noteTimer){clearTimeout(noteTimer);noteTimer=null;saveHistory();renderHistory()}
   sheet=null; $('#sheet').hidden=true; document.body.style.overflow='';
   if(lastFocus&&lastFocus.focus) try{lastFocus.focus()}catch(e){}
 }
@@ -707,8 +804,22 @@ function renderSheet(){
   else if(sheet.err) h+=`<div class="notice">${esc(sheet.err)} <button class="text-btn" type="button" data-retry>Try again</button></div>`;
   else if(sheet.recipe){
     const rc=sheet.recipe, isSaved=S.saved.some(x=>x.id===rc.id);
-    h+=`<div class="sheet-actions"><button class="btn ${isSaved?'btn-saved':'btn-primary'}" type="button" data-toggle-save aria-pressed="${isSaved}">${isSaved?'Saved':'Save recipe'}</button></div>
-    <h3 class="sec">Ingredients</h3>
+    const past=historyFor(rc.id), entry=sheet.hid?S.history.find(x=>x.hid===sheet.hid):null;
+    const loggedNow=entry&&Date.now()-entry.cookedAt<6e4*60*12&&!sheet.fromHistory;
+    h+=`<div class="sheet-actions"><button class="btn ${isSaved?'btn-saved':'btn-primary'}" type="button" data-toggle-save aria-pressed="${isSaved}">${isSaved?'Saved':'Save recipe'}</button>
+      <button class="btn${loggedNow?' btn-saved':''}" type="button" data-cooked ${loggedNow?'disabled':''}>${loggedNow?'Logged for today':'Cooked it'}</button></div>`;
+    if(entry){
+      h+=`<div class="cooked-panel"><p class="eyebrow">${loggedNow?'Logged for today':'Cooked '+esc(shortDate(entry.cookedAt))}</p>
+        <p>How was it?</p>${starsHtml(entry)}
+        <label class="field-label" for="cook-note" style="margin:6px 0 0">Notes for next time</label>
+        <textarea id="cook-note" data-hid="${esc(entry.hid)}" maxlength="500" placeholder="Add more garlic, double the sauce, kids loved it…">${esc(entry.note)}</textarea></div>`;
+    } else if(past.length){
+      const rated=past.find(x=>x.rating);
+      h+=`<p class="cook-stats">You've cooked this ${past.length===1?'once':past.length+' times'} · last on ${esc(shortDate(past[0].cookedAt))}${rated?' · rated '+rated.rating+'/5':''}</p>`;
+      const noted=past.find(x=>x.note);
+      if(noted) h+=`<p class="hist-note" style="margin:0 0 8px">Your note: ${esc(noted.note)}</p>`;
+    }
+    h+=`<h3 class="sec">Ingredients</h3>
     <ul class="ing">${rc.ingredients.map(i=>`<li class="${i.have?'have':'need'}"><span class="mark">${i.have?CHECK:PLUS}</span><span class="amt">${esc(i.amount)}</span><span class="item">${esc(i.item)}</span>${i.have?'<span></span>':'<span class="tag">Need</span>'}</li>`).join('')}</ul>
     <h3 class="sec">Steps</h3>
     <ol class="steps">${rc.steps.map(s=>`<li><span>${esc(s)}</span></li>`).join('')}</ol>
@@ -744,6 +855,10 @@ document.addEventListener('click',e=>{
   if(d.openSaved!==undefined){const r=S.saved.find(x=>x.id===d.openSaved);if(r)openSheet({idea:r,recipe:r,loading:false,err:null});return}
   if(d.close!==undefined){closeSheet();return}
   if(d.toggleSave!==undefined){toggleSave();return}
+  if(d.cooked!==undefined){markCooked();return}
+  if(d.rate){rateEntry(d.hid,+d.rate);return}
+  if(d.openHist!==undefined){const h=S.history.find(x=>x.hid===d.openHist);if(h)openSheet({idea:h.recipe,recipe:h.recipe,loading:false,err:null,hid:h.hid,fromHistory:true});return}
+  if(d.delHist!==undefined){deleteEntry(t,d.delHist);return}
   if(d.retry!==undefined){loadDetail();return}
 });
 document.addEventListener('submit',e=>{
@@ -759,12 +874,14 @@ $('#extras').addEventListener('change',e=>{S.prefs.extras=e.target.checked;rende
 $('#kids').addEventListener('change',e=>{S.prefs.kids=e.target.checked;renderSummary();scheduleSave()});
 $('#craving').addEventListener('input',e=>{S.prefs.craving=e.target.value.slice(0,80);scheduleSave()});
 $('#avoid').addEventListener('input',e=>{S.prefs.avoid=e.target.value.slice(0,120);renderAllergyNote();scheduleSave()});
+document.addEventListener('input',e=>{if(e.target.id==='cook-note')noteEntry(e.target.dataset.hid,e.target.value)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet)closeSheet()});
 
 /* ---------- start ---------- */
 if(!applyData(lsGet(LS_KITCHEN))){applyData(SAMPLE);S.isSample=true}
 else S.status='Saved on this device';
 const ls=lsGet(LS_SAVED); if(Array.isArray(ls)) S.saved=ls.filter(r=>r&&typeof r.title==='string'&&Array.isArray(r.steps));
+const lh=lsGet(LS_HISTORY); if(Array.isArray(lh)) S.history=lh.filter(h=>h&&h.hid&&h.recipe&&Array.isArray(h.recipe.steps)).map(h=>({...h,rating:Math.min(5,Math.max(0,+h.rating||0)),note:typeof h.note==='string'?h.note:''}));
 renderAll();
 })();
 </script>
